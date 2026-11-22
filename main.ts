@@ -23,6 +23,20 @@ const outDir = process.env.MAKEFUN_OUTPUT_DIR ?? "/output";
 const from = join(repoRoot, "POST.json");
 const to = join(outDir, "POST.json");
 
+// The post must live on X: the gate reads the meme from the post
+// itself, so a POST.json naming anywhere else is a dead entry.
+// Refuse it here, loudly, instead of handing the gate a bad address.
+function checkPostAddress(address: string): void {
+  const prefix = "https://x.com/";
+  if (!address.startsWith(prefix)) {
+    throw new Error(`POST.json must name an X post (${prefix}...), got: ${address}`);
+  }
+  const handle = address.slice(prefix.length).split("/")[0];
+  if (handle.length === 0) {
+    throw new Error(`POST.json names an X post with no account: ${address}`);
+  }
+}
+
 // Read the post address as raw bytes and write it back unchanged.
 const bytes = readFileSync(from);
 mkdirSync(outDir, { recursive: true });
@@ -31,4 +45,5 @@ writeFileSync(to, bytes);
 // Confirm the handoff on stdout so a local run shows the gate got it,
 // naming the post itself, not just the file.
 const post = JSON.parse(bytes.toString("utf8")) as { url: string };
+checkPostAddress(post.url);
 console.log(`Delivered ${to} (${bytes.length} bytes): ${post.url}`);
